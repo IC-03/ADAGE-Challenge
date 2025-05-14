@@ -2,3 +2,5 @@ env_challenge
 env_challenge/
 __pycache__
 __pycache__/
+output/**
+/output/

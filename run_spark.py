@@ -83,14 +83,8 @@ def YtXSparkJob(Y, Ym, Xm, CM, D, d, sc):
             Xi = (Yi @ CM) - (Ym @ CM)
 
             YtX_i = np.outer(Yi - Ym, Xi - Xm)
-#            XtX_i = np.outer(Xi - Xm, Xi - Xm)
             XtX_i = np.outer(Xi, Xi)
 
-            #YtX_i = np.outer(Yi, Xi_minus_Xm) - np.outer(Ym, Xi_minus_Xm)
-            #XtX_i = np.outer(Xi, Xi_minus_Xm) - np.outer(Xm, Xi_minus_Xm)
-            #non_zero_indices = np.nonzero(Yi)[0]
-            #for idx in non_zero_indices:
-            #    YtXSum.addRow(idx, YtX_i[idx, :])
             YtXSum.add(YtX_i)
             XtXSum.add(XtX_i)
         except Exception as e:
@@ -105,7 +99,7 @@ def YtXSparkJob(Y, Ym, Xm, CM, D, d, sc):
     XtX = XtXSum.accumulator.value
     return YtX, XtX
 
-
+# calcular ss3 de forma distribuida
 def ss3Job(Y, Ym, Xm, CM, C, sc):
     ss3 = sc.accumulator(0)
     Ym = np.array(Ym)
@@ -140,12 +134,6 @@ def ss3Job(Y, Ym, Xm, CM, C, sc):
     Y.foreach(calculate_ss3)
     return ss3.value
 
-# Ahora todo varias veces
-def has_converged(C_old, C_new, ss_old, ss_new, tol=1e-4):
-    delta_C = np.linalg.norm(C_new - C_old, ord='fro')
-    delta_ss = abs(ss_new - ss_old)
-    return delta_C < tol and delta_ss < tol
-
 
 ############# start spark session #############################
 
@@ -171,8 +159,14 @@ def parse_args():
     parser.add_argument('--output', type=str, default='', help='Output file')
     return parser.parse_args()
 
+# Ahora todo varias veces
+def has_converged(C_old, C_new, ss_old, ss_new, tol=1e-4):
+    delta_C = np.linalg.norm(C_new - C_old, ord='fro')
+    delta_ss = abs(ss_new - ss_old)
+    return delta_C < tol and delta_ss < tol
+
+
 def main(sc):
-    # inicializar spark
     args = parse_args()
     random.seed(42)
     np.random.seed(42)
@@ -196,6 +190,8 @@ def main(sc):
     C_old =  np.inf
     ss_old = np.inf
     num_iters = 0
+
+    # loop and update C and ss until the error is very small or the number of iterations is big
     while not has_converged(C_old, C, ss_old, ss) and num_iters < max_iters:
         # Compute M = Cᵀ * C + ss * I
         M = C.T @ C + ss * I
@@ -218,11 +214,18 @@ def main(sc):
         num_iters +=1
         print(f"{num_iters} ss : {ss}")
 
-
     # Columns of C are the principal components
-    sc.parallelize(C).map(lambda row: ",".join(map(str, row))).coalesce(1).saveAsTextFile(args.output)
+    sc.parallelize(C).map(lambda row: ",".join(map(str, row))).coalesce(1).saveAsTextFile(args.output + "_C")
+    # Define a function to reduce dimensionality by multiplying with C
+    def reduce_dimensionality(row):
+        return np.dot(row, C)
 
-
+    # Apply dimensionality reduction to each row in Y
+    reduced_rdd = Y.map(reduce_dimensionality)
+    # Save the reduced data as a single output file
+    reduced_rdd.map(lambda row: ",".join(map(str, row))) \
+        .coalesce(1) \
+        .saveAsTextFile(args.output + "_reduced")
 
 main(sc)
 spark.stop()

@@ -1,10 +1,10 @@
 # ⭐ sPCA Challenge
 Repositorio del Challenge de reproducibilidad para análisis de datos a gran escala 2025-1
 
-> 📄 **Citar el paper**: \[Aquí va el nombre del paper y su cita correspondiente]
+> 📄 **Citar el paper**: Elgamal, T., Yabandeh, M., Aboulnaga, A., Mustafa, W., & Hefeeda, M. (2015, May). sPCA: Scalable principal component analysis for big data on distributed platforms. In Proceedings of the 2015 ACM SIGMOD International Conference on Management of Data (pp. 79-91).
 
 > ✍️ **Descripción del paper**: 
----
+El paper sPCA: Scalable Principal Component Analysis for Big Data on Distributed Platforms presenta un algoritmo optimizado para realizar Análisis de Componentes Principales (PCA) en entornos distribuidos, diseñado para manejar grandes volúmenes de datos. Los autores identifican limitaciones en las implementaciones existentes de PCA (como las de Mahout y MLlib) en términos de escalabilidad, precisión y generación de datos intermedios.
 
 ## 📂 Estructura del Proyecto
 Para la ejecición del código solo usamos los archivos en `input` y el código `run_spca.py`, el resto de los archivos nos sirvieron para hacer pruebas del funcionamiento de la implementación.

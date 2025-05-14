@@ -1,6 +1,4 @@
 import numpy as np
-from pyspark.sql import SparkSession
-from pyspark.accumulators import AccumulatorParam
 from accumulators import MatrixAccumulatorWrapper
 
 ################# funciones ##########################
@@ -23,7 +21,8 @@ def FJob(Y_rdd, Ym):
 
 
 # calcula YtX y XtX de forma distribuida 
-def YtXSparkJob(Y, Ym, Xm, CM, D, d, sc):
+def YtXSparkJob(Y, Ym, Xm, CM, D, d, spark):
+    sc = spark.sparkContext
     YtXSum = MatrixAccumulatorWrapper(sc, shape=(D, d))
     XtXSum = MatrixAccumulatorWrapper(sc, shape=(d, d))
     Ym = np.array(Ym)
@@ -69,7 +68,8 @@ def YtXSparkJob(Y, Ym, Xm, CM, D, d, sc):
     return YtX, XtX
 
 
-def ss3Job(Y, Ym, Xm, CM, C, sc):
+def ss3Job(Y, Ym, Xm, CM, C, spark):
+    sc = spark.sparkContext
     ss3 = sc.accumulator(0)
     Ym = np.array(Ym)
     Xm = np.array(Xm)

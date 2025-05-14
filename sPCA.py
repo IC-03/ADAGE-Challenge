@@ -1,8 +1,12 @@
+import pyspark
 import numpy as np
-from pyspark.sql import SparkSession
-from utils import meanJob, FJob, YtXSparkJob, ss3Job
-import random
 import argparse
+import glob
+import os
+from pyspark.sql import SparkSession
+from pyspark.accumulators import AccumulatorParam
+from utils import meanJob, center_data, FJob, YtXSparkJob, ss3Job
+import random
 
 
 # Ahora todo varias veces
@@ -11,17 +15,11 @@ def has_converged(C_old, C_new, ss_old, ss_new, tol=1e-4):
     delta_ss = abs(ss_new - ss_old)
     return delta_C < tol and delta_ss < tol
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--input', type=str, default='', help='Input file txt')
-    parser.add_argument('--dim', type=int, default=3, help='Number of output dimensions')
-    parser.add_argument('--maxIters', type=int, default=100, help='Maximum iterations')
-    parser.add_argument('--output', type=str, default='', help='Output file')
-    return parser.parse_args()
 
-def main(sc):
+def main(args):
     # inicializar spark
-    args = parse_args()
+    spark = SparkSession.builder.appName("sPCA").getOrCreate()
+    sc = spark.sparkContext  # así obtienes el SparkContext moderno
     random.seed(42)
     np.random.seed(42)
 
@@ -32,12 +30,9 @@ def main(sc):
     d = args.dim  # dimension of the projection
     N = Y.count()
 
-
     # start probabilistic PCA
     C = np.random.normal(loc=0.0, scale=1.0, size=(D, d))
     ss = np.random.normal(loc=0.0, scale=1.0)
-
-    """
     Ym = np.array(meanJob(Y))
     ss1 = FJob(Y, Ym)
     I = np.eye(d)
@@ -56,17 +51,30 @@ def main(sc):
 
         # Compute Xm = Ym * CM
         Xm = Ym @ CM  # result has shape (d,)
-        YtX, XtX = YtXSparkJob(Y, Ym, Xm, CM, D, d, spark)
+        YtX, XtX = YtXSparkJob(Y, Ym, Xm, CM, D, d, sc)
         XtX += ss * M_inv
         XtX_inv = np.linalg.inv(XtX)
         C_old = C
         C = YtX @ XtX_inv
         ss2 = np.trace(XtX @ C.T @ C)
-        ss3 = ss3Job(Y, Ym, Xm, CM, C, spark)
+        ss3 = ss3Job(Y, Ym, Xm, CM, C, sc)
         ss_old = ss
         ss = (ss1**2 + ss2 -2 * ss3) / N / D
         num_iters +=1
         print(f"{num_iters} ss : {ss}")
-    """
+
     # Columns of C are the principal components
     np.savetxt(args.output, C, delimiter=",")
+
+
+
+
+if __name__ == '__main__':
+    """Run sPCA"""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', type=str, default='', help='Input file txt')
+    parser.add_argument('--dim', type=int, default=3, help='Number of output dimensions')
+    parser.add_argument('--maxIters', type=int, default=100, help='Maximum iterations')
+    parser.add_argument('--output', type=str, default='', help='Output file')
+    args = parser.parse_args()
+    main(args)

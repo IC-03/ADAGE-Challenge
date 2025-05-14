@@ -5,7 +5,7 @@ import glob
 import os
 from pyspark.sql import SparkSession
 from pyspark.accumulators import AccumulatorParam
-from utils import meanJob, center_data, FJob, YtXSparkJob, ss3Job
+from src.utils import meanJob, center_data, FJob, YtXSparkJob, ss3Job
 import random
 
 
